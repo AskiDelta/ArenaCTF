@@ -39,6 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CTFArena extends Arena {
     public static final boolean DEBUG = false;
+    private static final int SLOWNESS_DURATION = 60; // Duration in ticks (20 ticks per second)
+    private static final int SLOWNESS_LEVEL = 1;    // Slowness level
 
     private static final long FLAG_RESPAWN_TIMER = 20*15L;
     private static final long TIME_BETWEN_CAPTURES = 2000;
@@ -358,30 +360,45 @@ public class CTFArena extends Arena {
         }
     }
     private void playerReturnedFlag(Player player, Flag flag) {
-        flags.remove(flag.ent.getEntityId());
-        spawnFlag(flag);
-        performTransition(CTFTransition.ONFLAGRETURN,BattleArena.toArenaPlayer(player));
-    }
+    flags.remove(flag.ent.getEntityId());
+    spawnFlag(flag);
+    performTransition(CTFTransition.ONFLAGRETURN, BattleArena.toArenaPlayer(player));
+
+    // Remove slowness effect from the player
+    player.removePotionEffect(PotionEffectType.SLOW);
+}
+
 
     private void playerPickedUpFlag(Player player, Flag flag) {
-        flags.remove(flag.ent.getEntityId());
-        flag.setEntity(player);
-        flag.setHome(false);
-        flags.put(player.getEntityId(), flag);
-        cancelFlagRespawnTimer(flag);
-        if (flag.getEntity() instanceof Player)
-            performTransition(CTFTransition.ONFLAGPICKUP,BattleArena.toArenaPlayer(player));
-    }
+    flags.remove(flag.ent.getEntityId());
+    flag.setEntity(player);
+    flag.setHome(false);
+    flags.put(player.getEntityId(), flag);
+    cancelFlagRespawnTimer(flag);
+
+    // Apply slowness effect to the player
+    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, SLOWNESS_DURATION, SLOWNESS_LEVEL, true, true));
+
+    if (flag.getEntity() instanceof Player)
+        performTransition(CTFTransition.ONFLAGPICKUP, BattleArena.toArenaPlayer(player));
+}
+
 
     private void playerDroppedFlag(Flag flag, Item item) {
-        if (flag.getEntity() instanceof Player)
-            performTransition(CTFTransition.ONFLAGDROP,BattleArena.toArenaPlayer((Player)flag.getEntity()));
+    if (flag.getEntity() instanceof Player)
+        performTransition(CTFTransition.ONFLAGDROP, BattleArena.toArenaPlayer((Player) flag.getEntity()));
 
-        flags.remove(flag.ent.getEntityId());
-        flag.setEntity(item);
-        flags.put(item.getEntityId(), flag);
-        startFlagRespawnTimer(flag);
+    flags.remove(flag.ent.getEntityId());
+    flag.setEntity(item);
+    flags.put(item.getEntityId(), flag);
+    startFlagRespawnTimer(flag);
+
+    // Remove slowness effect from the player
+    if (flag.getEntity() instanceof Player) {
+        Player player = (Player) flag.getEntity();
+        player.removePotionEffect(PotionEffectType.SLOW);
     }
+}
 
     private void spawnFlag(Flag flag){
         cancelFlagRespawnTimer(flag);
